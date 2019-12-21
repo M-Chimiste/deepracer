@@ -29,74 +29,55 @@
 
 import math
 
-def reward_function(params):
-    SPEED_THRESHOLD = 6
-    STEERING_THRESHOLD = 15
-    DIRECTION_THRESHOLD = 15.0
-# --------- Start Params ---------
-    all_wheels_on_track = params['all_wheels_on_track'] # bool
 
-    left_side = params['is_left_of_center'] # bool to determine if on left or right of track
-    
-    waypoints = params['waypoints']
-
-    closest_waypoint = params['closest_waypoints']
-    
-    current_waypoint = waypoints[closest_waypoint[0]]
-
-    next_waypoint = waypoints[closest_waypoint[1]]
-
-    car_direction = ['heading']
-
-    steering = abs(params['steering_angle'])
-
+def reward_function(params):    
     speed = params['speed']
+    progress = params['progress']
+    left_of_center = params['is_left_of_center']
 
-    track_progress = params ['progress']
+    all_wheels_on_track = params['all_wheels_on_track']
 
-    reward = 1  # initial reward
-    punishment = 1 # used to penalize
+    waypoints = params['waypoints']    
+    closest_waypoints = params['closest_waypoints']    
+    heading = params['heading']
 
-# --------- End Params ---------
+    SPEED_TRESHOLD = 5    
+    DIRECTION_THRESHOLD = 10.0 
 
-    # Give a big reward if you finished the track!
+    reward = 1.0   
+    penalty = 1    
 
+    # Calculate the direction of the center line based on the closest waypoints    
+    next_point = waypoints[closest_waypoints[1]]    
+    prev_point = waypoints[closest_waypoints[0]]    
     
+    # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians    
+    track_direction = math.atan2(next_point[1] - prev_point[1], next_point[0] - prev_point[0])     # Convert to degree    
+    track_direction = math.degrees(track_direction)    # Calculate the difference between the track direction and the heading direction of the car
+    direction_diff = abs(track_direction - heading)    # Penalize the reward if the difference is too large    
     
-    #Make sure direction of car is that of track
-    track_heading = math.atan2(next_waypoint[1] - current_waypoint[1], next_waypoint[0] - current_waypoint[0])
-    track_heading = math.degrees(track_heading)
-    #Compare correct direction V direction of car
-    heading_delta = abs(track_heading - car_direction)
+    if direction_diff > DIRECTION_THRESHOLD:        
+        penalty = 1 - (direction_diff / 50)        
+        if penalty < 0 or penalty > 1:            
+            penalty = 0        
+        reward *= penalty    
 
-    if heading_delta > DIRECTION_THRESHOLD:
-        punishment= 1 - (heading_delta / 50)
+    if progress == 100:        
+        reward += 100    
 
-        if punishment < 0 or punishment > 1:
-            punishment = 0
-        
-        reward = reward * punishment
-
-    if track_progress == 100:  # reward getting to the end
-        reward = reward + 150
-
-    if speed < SPEED_THRESHOLD:  # Reward going fast
-        reward = reward * 0.8
-
-    if steering > STEERING_THRESHOLD:  # Reward not steering as much
-        reward = reward * 0.7
-    
-    
-    if left_side:  # reward being on left side of the track 
+    if left_of_center:  # reward being on left side of the track 
         reward = reward * 1.4
     else:
         reward = reward * 0.8
 
-    if not (all_wheels_on_track):  # return almost 0 if car crashed
-        reward = 0.0001
+    if speed < SPEED_TRESHOLD:
+        reward = reward * 0.8
     
-    # Sanity Check 
-    if reward < 0:
+    if not all_wheels_on_track:
+        reward = 0.00001
+
+    if reward < 0:  # Sanity Check
         reward = 0
 
-    return float(reward)
+
+    return reward
