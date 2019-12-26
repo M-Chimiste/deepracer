@@ -42,7 +42,7 @@ def reward_function(params):
     heading = params['heading']
 
     SPEED_TRESHOLD = 5    
-    DIRECTION_THRESHOLD = 10.0 
+    DIRECTION_THRESHOLD = 15.0 
 
     reward = 1.0   
     penalty = 1    
@@ -51,33 +51,57 @@ def reward_function(params):
     next_point = waypoints[closest_waypoints[1]]    
     prev_point = waypoints[closest_waypoints[0]]    
     
-    # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians    
-    track_direction = math.atan2(next_point[1] - prev_point[1], next_point[0] - prev_point[0])     # Convert to degree    
-    track_direction = math.degrees(track_direction)    # Calculate the difference between the track direction and the heading direction of the car
-    direction_diff = abs(track_direction - heading)    # Penalize the reward if the difference is too large    
+    def check_direction(next_point=next_point, prev_point=prev_point,
+                        car_direction=heading, reward=reward, penalty=penalty):
+
+        # Calculate the direction in radius, arctan2(dy, dx), the result is (-pi, pi) in radians    
+        track_direction = math.atan2(next_point[1] - prev_point[1], next_point[0] - prev_point[0])     # Convert to degree    
+        track_direction = math.degrees(track_direction)    # Calculate the difference between the track direction and the heading direction of the car
+        direction_diff = abs(track_direction - heading)    # Penalize the reward if the difference is too large    
+        
+        if direction_diff > DIRECTION_THRESHOLD:        
+            penalty = 1 - (direction_diff / 50)        
+            if penalty < 0 or penalty > 1:            
+                penalty = 0        
+            reward *= penalty
+        else:
+            reward *= 1.2 # bump if you are going the right direction
+
+        return reward
+
+    def check_progress(progress=progress, reward=reward):
+        if progress == 100:        
+            reward += 100
+        return reward   
+
+    def reward_progress(progress, reward=reward):
+        reward += progress
+        return reward
+
+    def keep_left(left_of_center=left_of_center, reward=reward):
+        if left_of_center:  # reward being on left side of the track 
+            reward = reward * 1.4
+        else:
+            reward = reward * 0.8
+        return reward
     
-    if direction_diff > DIRECTION_THRESHOLD:        
-        penalty = 1 - (direction_diff / 50)        
-        if penalty < 0 or penalty > 1:            
-            penalty = 0        
-        reward *= penalty    
-
-    if progress == 100:        
-        reward += 100    
-
-    if left_of_center:  # reward being on left side of the track 
-        reward = reward * 1.4
-    else:
-        reward = reward * 0.8
-
-    if speed < SPEED_TRESHOLD:
-        reward = reward * 0.8
+    def run_fast(speed=speed, speed_threshold=SPEED_TRESHOLD, reward=reward):
+        if speed < speed_threshold:
+            reward = reward * 0.8
+        return reward
     
-    if not all_wheels_on_track:
-        reward = 0.00001
+    def check_wheels(all_wheels_on_track=all_wheels_on_track, reward=reward):
+        if not all_wheels_on_track:
+            reward = 0.00001
+        return reward
 
-    if reward < 0:  # Sanity Check
-        reward = 0
+    reward = check_direction(next_point=next_point, prev_point=prev_point,
+                        car_direction=heading, reward=reward, penalty=penalty)
+    reward = reward_progress(progress=progress)
+    reward = check_progress(progress=progress)
+    reward = run_fast(speed=speed)
+    reward = keep_left(left_of_center=left_of_center)
+    reward = check_wheels(all_wheels_on_track=all_wheels_on_track)
 
+    return float(reward)
 
-    return reward
