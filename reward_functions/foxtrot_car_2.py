@@ -3,7 +3,7 @@ def reward_function(params):
     steps = params['steps']
     progress = params['progress']
     speed = params['speed']
-    steering_angle = params['steering_angle']
+    left_of_center = params['is_left_of_center']
 
     if all_wheels_on_track and steps > 0:
         reward =  ((progress / steps) * 100) + speed ** 2
@@ -11,8 +11,7 @@ def reward_function(params):
         reward =  0.000001
     
 
-    if abs(steering_angle) > 15:
+    if not left_of_center:
         reward = 0.8 * reward
 
     return float(reward)
-
