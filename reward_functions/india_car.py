@@ -71,7 +71,7 @@ WAYPOINTS =[[2.88517874, 0.70969365],
        [2.3394868 , 0.79246068],
        [2.60144227, 0.74185631],
        [2.88517874, 0.70969365]]
-
+UP_SAMPLE_FACTOR = 1
 
 def dist(point1, point2):
     return ((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2) ** 0.5
@@ -143,7 +143,7 @@ def up_sample(waypoints, factor):
 
 
 def get_target_point(params):
-    waypoints = up_sample(get_waypoints_ordered_in_driving_direction(params, WAYPOINTS), 20)
+    waypoints = up_sample(get_waypoints_ordered_in_driving_direction(params, WAYPOINTS), UP_SAMPLE_FACTOR)
 
     car = [params['x'], params['y']]
 
@@ -200,4 +200,3 @@ def reward_function(params):
     else:
         reward = 0.0001
         return float(reward)
-
